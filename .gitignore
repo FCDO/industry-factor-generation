@@ -1,0 +1,18 @@
+# 爬蟲執行時暫存的原始 HTML（可隨時重抓）
+scraper/_*.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code 個人設定
+.claude/settings.local.json
