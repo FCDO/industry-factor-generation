@@ -18,7 +18,7 @@
 ├── industry_chain.csv              # 爬蟲產出，主要對照表
 ├── scraper/
 │   └── scrape_industry_chain.py    # TPEx 爬蟲
-└── research/                       # Phase 1~10 實證分析
+└── research/                       # Phase 1~11 實證分析
     ├── research_report.md          # 完整研究報告
     ├── phase1_build_returns.py     # 構建產業鏈組合日報酬
     ├── phase2_predictive_reg.py    # Menzly-Ozbas 預測迴歸
@@ -35,7 +35,8 @@
     ├── phase8b_selection_robustness.py  # 下游選擇 robustness
     ├── phase9_semi_internal.py     # 半導體鏈內部 (sub_code 級)
     ├── phase10_ic_vs_foundry.py    # IC設計 vs 晶圓代工 源頭辨認
-    └── output/                     # 30+ CSV/PNG 結果檔
+    ├── phase11_chain_extension.py  # 23 鏈 timing 掃描 + top-3 sub_code 深掘
+    └── output/                     # 40+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -95,6 +96,12 @@ python scraper/scrape_industry_chain.py
   - Orthogonalization: IC 設計⊥晶圓代工殘差 (僅 17% 變異) 仍 8/8 顯著; 晶圓代工殘差 0/8
   - 台積電 2330 有獨立 alpha (t≈2.6), 反映全球 AI/客戶 macro 訊號
   - **訊息傳導鏈: 客戶 → IC 設計 → 晶圓代工 → 後段製程**
+- [x] **Phase 11: 鏈內 timing 策略擴展到 23 條 standard chain + top-3 sub_code 深掘**
+  - 11a 上→中下游 timing (EMA(20), K=1, net@50bp): 13/23 鏈 t>1.96, 6/23 t>4
+  - **半導體不是最強**: G000 平面顯示器 t=4.96 (alpha 14.5%), P000 電機機械 t=4.74 (alpha 12.3%) 均勝過 D000 t=4.31
+  - 唯一失敗: 5800 運動科技 (樣本太薄, t=-0.41); Q000 鋼鐵鏈內無效 (跨產業才是 leader)
+  - 11b sub_code 純 leader: G000 → 其他零組件 GA00 (t=1.86, 7/12 sig); P000 → 沖壓零組件 P600 + 傳動元件 P200; I000 → 光通訊 IA00 + 網路IC + 記憶體 + 網路設備 (多源頭結構, 不像 D000 一枝獨秀)
+  - 異常: I000 鏈內印刷電路板 I500 為**反向訊號** (作 predictor mean t=-2.04, 6/11 negative sig), 可能反映 PCB 庫存週期與終端對沖
 
 ### 待辦
 - [ ] **以 IC 設計 (D100) 替換 Phase 8 整體半導體訊號**
@@ -105,12 +112,20 @@ python scraper/scrape_industry_chain.py
   - Phase 10 顯示 2330 有獨立於 IC 設計 portfolio 的 alpha (t≈2.6, 反映 macro AI)
   - 預期雙因子線性組合 (e.g., 0.7×D100 + 0.3×TSMC) 比單一 IC 設計訊號更強
   - 需測試最佳權重 + 是否要做殘差化避免共線性
-- [ ] **訊號源純化擴展到其他產業**
-  - 對其他 leader 產業（鋼鐵 Q000、運動科技 5800 等）做 sub_code 級分析
-  - 找出每個 leader 產業的「真實源頭 sub-category」
+- [ ] **Phase 12: 平面顯示器/電機機械源頭辨認 (Phase 10 風格)**
+  - Phase 11a 顯示 G000 t=4.96, P000 t=4.74 都超越半導體
+  - 對 G000 (GA00 vs 整體 G000) 與 P000 (P600+P200 vs 整體 P000) 做 joint reg, 確認真實源頭
+  - 預期類似 Phase 10 結論: 純 leader sub_code 主導, 整體鏈為 noise dilution
+- [ ] **跨鏈 leader 組合因子**
+  - 把 D100、GA00、P600+P200、IA00 等多源頭整合為 pure-leader 因子
+  - 測試是否優於單鏈訊號, 並用 PCA / orthogonalization 處理共線性
+- [ ] **I500 印刷電路板反向訊號異常研究**
+  - Phase 11b 發現 I000 鏈內 I500 作 predictor 為 mean t=-2.04 (6/11 negative sig)
+  - 假設: PCB 庫存週期反向領先, 或代工 vs 終端對沖效應
+  - 驗證: 個股拆解 + 跨產業檢驗
 - [ ] 多產業歸屬規則：一家公司若跨多產業，主產業如何決定
   - 候選：(a) FinLab 主產業 join，(b) 取營收最大產業，(c) 全部保留做加權
-- [ ] 嚴格 walk-forward 驗證：rolling 訓練/測試, 確認 Phase 8 的最佳 (N, K) 不是 in-sample lookback
+- [ ] 嚴格 walk-forward 驗證：rolling 訓練/測試, 確認 Phase 8/11 的最佳 (N, K) 不是 in-sample lookback
 - [ ] 個股層級因子化：把 IC 設計訊號傳導模型轉為 firm-level alpha factor (Cohen-Frazzini 風)
 - [ ] 鏈間網絡分析：以 link 矩陣計算 centrality / community detection, 系統化定義產業 hub
 
