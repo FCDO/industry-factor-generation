@@ -18,7 +18,7 @@
 ├── industry_chain.csv              # 爬蟲產出，主要對照表
 ├── scraper/
 │   └── scrape_industry_chain.py    # TPEx 爬蟲
-└── research/                       # Phase 1~16 實證分析
+└── research/                       # Phase 1~22 實證分析
     ├── research_report.md          # 完整研究報告
     ├── phase1_build_returns.py     # 構建產業鏈組合日報酬
     ├── phase2_predictive_reg.py    # Menzly-Ozbas 預測迴歸
@@ -38,11 +38,16 @@
     ├── phase11_chain_extension.py  # 23 鏈 timing 掃描 + top-3 sub_code 深掘
     ├── phase12_d100_replace.py     # D100 替換 D000 重做 Phase 8 (null 結果)
     ├── phase13_dual_factor.py      # IC設計 + 台積電 雙因子組合 (核心 winner)
-    ├── phase14_cross_chain_combo.py # 6-leader 跨鏈整合 (negative, 集中於 D100+2330)
+    ├── phase14_cross_chain_combo.py # 6-leader 跨鏈整合 (negative)
     ├── phase15_g000_p000_sources.py # G000/P000 源頭辨認 + 個股 macro 檢驗
-    ├── phase16_walkforward.py      # 嚴格 walk-forward 驗證 (5y train / 1y test)
-    ├── phase17_p000_dual_factor.py # P000 雙因子嘗試 (null, 整體 P000 仍最強)
-    └── output/                     # 75+ CSV/PNG 結果檔
+    ├── phase16_walkforward.py      # 嚴格 walk-forward 驗證
+    ├── phase17_p000_dual_factor.py # P000 雙因子嘗試 (null)
+    ├── phase18_network_centrality.py # 40 產業 network + 多種 centrality
+    ├── phase19_community_combo.py  # Community detection + 跨群組合 (null)
+    ├── phase20_firm_level_alpha.py # Cohen-Frazzini β-sorted long-only timed
+    ├── phase21_cs_factor.py        # Cross-sectional factor 變體 (全部 negative)
+    ├── phase22_g000_strategy.py    # G000 完整策略規劃 + walk-forward
+    └── output/                     # 90+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -150,18 +155,58 @@ python scraper/scrape_industry_chain.py
     3. best (N, K) = (3, 20) 偏離正常區間 — 短平滑+長持有是雜訊累積特徵
   - **重要結論**: D100+2330 雙因子 winner status 特殊於 D000 鏈結構 (sub_code leader ≈ 整體鏈), 不可機械套用到其他鏈
   - **P000 最佳實作仍是整體 P000 (N=20, K=1) net@50bp Sharpe 1.56**
+- [x] **Phase 18: 40 產業 spillover network + centrality**
+  - 跑 1560 個 lagged regression (3.1s), 建 directed weighted graph
+  - 正向邊 |t|>2: 131 條 (8.4%); 負向邊: 71 條 (4.6%)
+  - **Out-weighted top hub**: R300 電子商務 (artifact, 39 邊), **D000 半導體 #2 真 hub (out_w 76, 26 邊)**, 5700 體驗科技 (artifact)
+  - **Negative-out hub #1**: Q000 鋼鐵 (35 條負邊), 對 B000/G000/K000/I000 全 t<-3.5 (成本傳導完美驗證)
+  - **HITS authority** (純 receiver): G000/I000/K000/J000/F000 → Phase 8 7 跨產業下游名單高度重合
+  - **Betweenness #1**: D000 (0.053) 為訊息傳遞核心橋樑
+  - 5xxx 主題分類 (R300/5700/5800/5200) 因含小型高 beta 股有 high-out-degree artifact
+- [x] **Phase 19: Community detection + 跨群組合 (null)**
+  - Greedy modularity 找到 9 個 community, 3 個有實質: Community 0 (科技電子 16 個), 1 (傳統民生 10 個), 2 (生技通信 5 個)
+  - 從 5 個 community + 2330 取代表 leader 構 cross-community combo
+  - **跨 community leader corr 仍 0.77-0.90** (除 2330 ~0.43-0.52), community detection 沒能找到正交訊號
+  - comm-OLS-oracle (look-ahead) alpha 15.31%/t=5.18 仍輸 D100+0.5·2330 (15.26%/5.72)
+  - **副產品**: OLS oracle 揭示 N000 石化係數 -0.107 (反向訊號), 與 I500 PCB 異常呼應
+  - **核心結論**: D100+2330 接近台股 spillover 訊號天花板, 共同因子支配所有產業 leader
+- [x] **Phase 20: Firm-level alpha (Cohen-Frazzini) — long-only timed 改善有限**
+  - Universe: 7 跨產業下游 620 檔, 排除 D100+2330 自我預測
+  - β_i(t) = rolling 250d cov(r_i, lead_lag) / var(lead_lag), monthly rebal 5 分位數
+  - **Q1→Q5 always-on alpha 全部接近 0**: Q5 alpha -0.96%, Q1 +0.10%, **無 cross-sectional 單調性**
+  - **Q5 timed (long-only)**: net@50bp alpha 17.69%, t=5.00, Sharpe 1.55 (vs EW timed alpha 10.14%, t=4.84)
+  - Δalpha +7.5pp 但 t_α 僅 +0.16 — alpha 增益被高 vol (14.65%) 稀釋
+  - **Q5-Q1 long-short timed FAIL**: alpha -10.24%, t=-4.56 (台股無 cross-sectional β anomaly, 反而負向)
+- [x] **Phase 21: Cross-sectional factor 全部 negative — 訊號不可 CS 化**
+  - 5 種 score variant (β×EMA, β×sign, β×z, β only, β×lag): **全部 net alpha < 0**
+  - 最佳 C_β×z(lead): alpha -6.67%, t=-2.12, IC=+0.004
+  - 純 β only: alpha -3.81%, t=-1.30 (low-beta anomaly: 高 β 反而 underperform)
+  - **核心結論**: D100+2330 是 time-series timing 訊號, 不是 stock-selection 訊號
+  - 多因子整合應視為 regime indicator (動態 beta tilt), 不可與 size/value/momentum 並列
+- [x] **Phase 22: G000 平面顯示器 完整策略規劃 (10 predictor + walk-forward)**
+  - 10 個 predictor 變體: 鏈內 (G_up/GA00/G_overall) + 跨產業 (D_macro) + 反向 (Q000) 線性組合
+  - **驚人發現: D_macro alone (Phase 13 訊號) 在 G000 中下游 alpha 15.79%, t=5.11, 比 G000 內部訊號 (A_G_up alpha 12.54%) 還強**
+  - 加 GA00 鏈內訊號邊際提升小, Q000 反向訊號無實質貢獻 (H_GA-0.3Q 反而變差)
+  - **Walk-forward winner**: G_0.3GA+0.7D (30% GA00 + 70% D_macro), WF α=11.76%, t=3.68, Sharpe 1.55, 衰減僅 -0.42pp
+  - 三因子 I_3factor IS 看似最強 (t=5.30) 但 OOS 衰減 -4.03pp (overfit Q000 無實質訊號)
+  - **G000 實盤建議: G_0.3GA+0.7D (N=10, K=1)** 或更簡單的 D_macro alone (WF α=11.57%, t=3.61)
 
 ### 待辦
 - [ ] **I500 印刷電路板反向訊號異常研究**
   - Phase 11b 發現 I000 鏈內 I500 作 predictor 為 mean t=-2.04 (6/11 negative sig)
-  - 假設: PCB 庫存週期反向領先, 或代工 vs 終端對沖效應
-  - 驗證: 個股拆解 + 跨產業檢驗
+  - Phase 19 OLS-oracle 發現 N000 石化係數 -0.107 也是反向訊號, 同類型異常
+  - 假設: 庫存週期反向領先, 或代工 vs 終端對沖效應
+  - 驗證: 個股拆解 + 跨產業檢驗 + 整合多反向訊號為 contrarian factor
+- [ ] **產業內中性 β CS 因子 (Phase 21 救援)**
+  - Phase 21 全 universe β-sort LS 全 negative, 可能受 size/sector 干擾
+  - 試: 產業內排序 β, 產業等權聚合, 看是否仍 negative
+  - 對照: BAB (Frazzini-Pedersen long low-β / short high-β) 是否可在台股直接複製
+- [ ] **其他鏈套用 Phase 22 風策略規劃**
+  - P000 已試過 (Phase 17 fail), G000 已試過 (Phase 22 success)
+  - 可對 Phase 11a 中 t>4 鏈一一套用: I000/F000/L000/J000/H000/K000/S000
+  - 預期: 純鏈內 vs D_macro 對比, 確認 D_macro 是否普適
 - [ ] 多產業歸屬規則：一家公司若跨多產業，主產業如何決定
   - 候選：(a) FinLab 主產業 join，(b) 取營收最大產業，(c) 全部保留做加權
-- [ ] 個股層級因子化：把 IC 設計訊號傳導模型轉為 firm-level alpha factor (Cohen-Frazzini 風)
-  - 不要 long 整個產業 EW, 改 long 對訊號有最高 exposure 的個股 (依 rolling β)
-  - 預期: firm-level alpha factor 可整合進多因子模型
-- [ ] 鏈間網絡分析：以 link 矩陣計算 centrality / community detection, 系統化定義產業 hub
 
 ## 注意事項
 

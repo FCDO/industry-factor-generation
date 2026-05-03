@@ -1,0 +1,48 @@
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+Font 'default' does not have a glyph for '\u2212' [U+2212], substituting with a dummy symbol.
+====================================================================================================
+Phase 21: Cross-Sectional Alpha Factor — β × predicted lead
+====================================================================================================
+
+Universe: 620 檔
+
+[1] 計算 rolling β (window=250d)
+  shape: (4674, 620)
+
+[2] 構建 5 種 cross-sectional score
+
+[3] Monthly rebal, decile 10 - decile 1 long-short
+
+[4] 計算 IC (monthly Spearman 相關)
+
+====================================================================================================
+各 CS factor variant 表現 (monthly rebal, decile 10 - decile 1 LS, 扣 50bp)
+====================================================================================================
+
+variant                   ann_ret    ann_vol   Sharpe     alpha      t_α  IC_mean      IR   ann_turn
+A_beta_x_EMA              -0.1042     0.1244   -0.838   -0.1062   -3.506  -0.0199  -0.545     27.864
+B_beta_x_sign             -0.1042     0.1244   -0.838   -0.1062   -3.506  -0.0199  -0.545     27.864
+C_beta_x_zlead            -0.0711     0.1233   -0.577   -0.0667   -2.115  +0.0043  +0.116     28.190
+D_beta_only               +0.0041     0.1222   +0.033   -0.0381   -1.304  -0.0201  -0.550     11.140
+E_beta_x_lead_lag         -0.0845     0.1236   -0.684   -0.0803   -2.646  -0.0009  -0.025     28.987
+
+>>> Reference baselines:
+  Phase 20 Q5 timed (long-only timed):  alpha=+0.1769, t=+5.018, Sh=+1.554, ann_turn=39.97
+  Phase 13 EW timed (long-only timed):  alpha=+0.1014, t=+4.840, Sh=+1.449
+
+圖檔: fig_phase21_factor_curves.png
+
+====================================================================================================
+結論 — CS factor 是否成功?
+====================================================================================================
+
+判定標準: net t_α > 2.0 且 IC > 0.02 視為「真 CS alpha」
+  A_beta_x_EMA           net_α=-0.1062, t=-3.506, Sh=-0.838, IC=-0.0199, IR=-0.545 ↓
+  B_beta_x_sign          net_α=-0.1062, t=-3.506, Sh=-0.838, IC=-0.0199, IR=-0.545 ↓
+  C_beta_x_zlead         net_α=-0.0667, t=-2.115, Sh=-0.577, IC=+0.0043, IR=+0.116 ↓
+  D_beta_only            net_α=-0.0381, t=-1.304, Sh=+0.033, IC=-0.0201, IR=-0.550 ↓
+  E_beta_x_lead_lag      net_α=-0.0803, t=-2.646, Sh=-0.684, IC=-0.0009, IR=-0.025 ↓

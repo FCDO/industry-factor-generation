@@ -1,0 +1,129 @@
+====================================================================================================
+Phase 19: Community Detection + 跨群組合因子
+====================================================================================================
+
+[Artifact 過濾] out_degree > 30 視為市場先行 artifact:
+  R300 電子商務        out_count=39, n_stocks=31 → 排除
+
+[Undirected positive graph] 40 nodes, 90 edges
+
+[Communities] 找到 9 個 community
+
+各 community 成員 (按 out_weighted 排序):
+
+  Community 0 (16 個):
+    D000 半導體             out_w=76.04, out_count=26, n_stocks=297
+    5700 體驗科技            out_w=66.57, out_count=25, n_stocks=19
+    5200 金融科技            out_w=7.05, out_count=3, n_stocks=18
+    5400 雲端運算            out_w=2.25, out_count=1, n_stocks=59
+    F000 電腦週邊            out_w=2.13, out_count=1, n_stocks=303
+    C200 醫療器材            out_w=2.04, out_count=1, n_stocks=118
+    H000 觸控面板            out_w=2.04, out_count=1, n_stocks=45
+    5300 人工智慧            out_w=0.00, out_count=0, n_stocks=61
+    3000 汽車              out_w=0.00, out_count=0, n_stocks=69
+    5500 資通訊安全           out_w=0.00, out_count=0, n_stocks=33
+    J000 被動元件            out_w=0.00, out_count=0, n_stocks=51
+    G000 平面顯示器           out_w=0.00, out_count=0, n_stocks=131
+    L000 印刷電路板           out_w=0.00, out_count=0, n_stocks=94
+    K000 連接器             out_w=0.00, out_count=0, n_stocks=57
+    R000 軟體服務            out_w=0.00, out_count=0, n_stocks=72
+    X000 其他              out_w=0.00, out_count=0, n_stocks=256
+
+  Community 1 (10 個):
+    B000 休閒娛樂            out_w=23.32, out_count=10, n_stocks=70
+    V000 貿易百貨            out_w=11.29, out_count=5, n_stocks=69
+    5100 區塊鏈             out_w=2.39, out_count=1, n_stocks=7
+    1000 水泥              out_w=2.27, out_count=1, n_stocks=10
+    M000 食品              out_w=2.10, out_count=1, n_stocks=59
+    T000 交通運輸及航運         out_w=2.05, out_count=1, n_stocks=36
+    O000 紡織              out_w=0.00, out_count=0, n_stocks=74
+    Q000 鋼鐵              out_w=0.00, out_count=0, n_stocks=58
+    P000 電機機械            out_w=0.00, out_count=0, n_stocks=131
+    S000 建材營造            out_w=0.00, out_count=0, n_stocks=130
+
+  Community 2 (5 個):
+    4100 太空衛星科技          out_w=21.35, out_count=9, n_stocks=14
+    C100 製藥              out_w=0.00, out_count=0, n_stocks=78
+    I000 通信網路            out_w=0.00, out_count=0, n_stocks=162
+    C300 食品生技            out_w=0.00, out_count=0, n_stocks=40
+    C400 再生醫療            out_w=0.00, out_count=0, n_stocks=11
+
+  Community 3 (3 個):
+    5800 運動科技            out_w=11.52, out_count=5, n_stocks=24
+    6000 自動化             out_w=0.00, out_count=0, n_stocks=13
+    5600 大數據             out_w=0.00, out_count=0, n_stocks=40
+
+  Community 4 (2 個):
+    N000 石化及塑橡膠          out_w=2.43, out_count=1, n_stocks=89
+    W000 油電燃氣            out_w=0.00, out_count=0, n_stocks=11
+
+  Community 5 (1 個):
+    2000 造紙              out_w=0.00, out_count=0, n_stocks=8
+
+  Community 6 (1 個):
+    R300 電子商務            out_w=113.05, out_count=39, n_stocks=31 [ARTIFACT]
+
+  Community 7 (1 個):
+    U000 金融              out_w=0.00, out_count=0, n_stocks=46
+
+  Community 8 (1 個):
+    Y000 文化創意            out_w=0.00, out_count=0, n_stocks=35
+  Community 0 representative leader: D000 半導體        (out_w=76.04)
+  Community 1 representative leader: B000 休閒娛樂       (out_w=23.32)
+  Community 2 representative leader: 4100 太空衛星科技     (out_w=21.35)
+  Community 3 representative leader: 5800 運動科技       (out_w=11.52)
+  Community 4 representative leader: N000 石化及塑橡膠     (out_w=2.43)
+
+選出 5 個 community leaders
+
+[Cross-community leader 同期相關]
+       D000   B000   4100   5800   N000   2330
+D000  1.000  0.821  0.901  0.895  0.843  0.506
+B000  0.821  1.000  0.765  0.801  0.830  0.405
+4100  0.901  0.765  1.000  0.857  0.781  0.477
+5800  0.895  0.801  0.857  1.000  0.837  0.521
+N000  0.843  0.830  0.781  0.837  1.000  0.442
+2330  0.506  0.405  0.477  0.521  0.442  1.000
+
+[PCA PC1] var explained = 0.739
+  loadings: {'D000': np.float64(0.464), 'B000': np.float64(0.331), '4100': np.float64(0.503), '5800': np.float64(0.395), 'N000': np.float64(0.322), '2330': np.float64(0.403)}
+
+[OLS-oracle] 對 xind target_{t+1} 係數:
+  D000: +0.1113
+  B000: +0.0550
+  4100: +0.0088
+  5800: +0.0166
+  N000: -0.1073
+  2330: +0.0459
+
+====================================================================================================
+Strategy sweep on xind target
+====================================================================================================
+
+>>> 各 predictor best @ 50bp (按 t_alpha 排序):
+    predictor  smooth_N  hold_K  ann_ret  ann_vol  sharpe  ann_alpha  t_alpha  max_dd  avg_daily_turn
+D100+0.5·2330        10       1   0.1973   0.1197  1.6476     0.1526   5.7220 -0.1910          0.1550
+ comm-OLS-ora        10       1   0.1954   0.1162  1.6814     0.1531   5.1822 -0.2082          0.1494
+ comm-PCA-PC1        10       1   0.1781   0.1217  1.4634     0.1320   4.9150 -0.2155          0.1443
+  comm-EW-raw        10       1   0.1776   0.1215  1.4620     0.1317   4.7292 -0.2428          0.1460
+         D100        20       1   0.1684   0.1171  1.4381     0.1256   4.2028 -0.2608          0.1015
+
+>>> 固定 (N=10, K=1) — Phase 13 winner 參數下 @ 50bp:
+  D100+0.5·2330           ann_ret=+0.1973  sharpe=+1.648  alpha=+0.1526  t_α=+5.722
+  comm-OLS-ora            ann_ret=+0.1954  sharpe=+1.681  alpha=+0.1531  t_α=+5.182
+  comm-PCA-PC1            ann_ret=+0.1781  sharpe=+1.463  alpha=+0.1320  t_α=+4.915
+  comm-EW-raw             ann_ret=+0.1776  sharpe=+1.462  alpha=+0.1317  t_α=+4.729
+  D100                    ann_ret=+0.1590  sharpe=+1.352  alpha=+0.1157  t_α=+4.391
+
+圖檔: fig_phase19_community_graph.png
+圖檔: fig_phase19_combo_comparison.png
+
+====================================================================================================
+結論
+====================================================================================================
+
+baseline Phase 13 D100+0.5·2330: alpha=0.1526, t=5.722, Sh=1.648
+  comm-OLS-ora           alpha=0.1531  t=+5.182  Sh=+1.681  Δα=+0.06pp  Δt=-0.54 ↑
+  comm-PCA-PC1           alpha=0.1320  t=+4.915  Sh=+1.463  Δα=-2.05pp  Δt=-0.81 ↓
+  comm-EW-raw            alpha=0.1317  t=+4.729  Sh=+1.462  Δα=-2.09pp  Δt=-0.99 ↓
+  D100                   alpha=0.1256  t=+4.203  Sh=+1.438  Δα=-2.70pp  Δt=-1.52 ↓

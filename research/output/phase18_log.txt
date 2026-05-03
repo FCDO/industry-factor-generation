@@ -1,0 +1,95 @@
+====================================================================================================
+Phase 18: 40 產業 spillover 網絡 + 中心性分析
+====================================================================================================
+
+納入 40 個產業 (≥3 股, in adj_close)
+
+[1] 跑 1560 個 lagged regression...
+  完成 1560 個有效配對, 耗時 3.1s
+
+[Spillover edges]
+  正向 |t| > 2.0: 131 條 (8.4%)
+  負向 |t| > 2.0: 71 條 (4.6%)
+  無向 (|t| > 2.0): 202 條 (12.9%)
+
+[Graph G_pos] 40 nodes, 131 edges
+[Graph G_neg] 40 nodes, 71 edges
+
+[2] Centrality 計算 (基於 G_pos, 正向 spillover only)
+  eigenvector_centrality_numpy failed: `eigenvector_centrality_numpy` does not give consistent results for disconnected graphs
+
+>>> Top 15 by out-weighted degree (領先樞紐 — 對最多下游有顯著正向影響):
+industry_code industry_name  n_stocks  out_degree  out_weighted  in_degree  pagerank   hub
+         R300          電子商務        31          39       113.052          1     0.017 0.303
+         D000           半導體       297          26        76.040          3     0.021 0.246
+         5700          體驗科技        19          25        66.575          2     0.017 0.220
+         B000          休閒娛樂        70          10        23.318          3     0.018 0.042
+         4100        太空衛星科技        14           9        21.347          3     0.018 0.063
+         5800          運動科技        24           5        11.517          3     0.018 0.040
+         V000          貿易百貨        69           5        11.286          3     0.018 0.017
+         5200          金融科技        18           3         7.048          5     0.036 0.023
+         N000        石化及塑橡膠        89           1         2.427          3     0.018 0.003
+         5100           區塊鏈         7           1         2.388          5     0.043 0.005
+         1000            水泥        10           1         2.273          3     0.021 0.003
+         5400          雲端運算        59           1         2.253          4     0.027 0.007
+         F000          電腦週邊       303           1         2.127          3     0.018 0.008
+         M000            食品        59           1         2.099          4     0.039 0.002
+         T000       交通運輸及航運        36           1         2.050          4     0.055 0.002
+
+>>> Top 10 by HITS authority (受領先源頭影響最深):
+industry_code industry_name  authority  in_degree  in_weighted
+         G000         平面顯示器      0.039          5       14.580
+         I000          通信網路      0.039          4       12.660
+         K000           連接器      0.037          5       14.038
+         5200          金融科技      0.037          5       13.803
+         3000            汽車      0.035          3        9.600
+         6000           自動化      0.035          5       14.260
+         J000          被動元件      0.034          3        9.407
+         5600           大數據      0.034          4       11.064
+         5500         資通訊安全      0.034          4       11.058
+         F000          電腦週邊      0.034          3        9.204
+
+>>> Top 10 by betweenness (訊息橋樑):
+industry_code industry_name  betweenness  out_degree  in_degree
+         D000           半導體        0.053          26          3
+         B000          休閒娛樂        0.022          10          3
+         R300          電子商務        0.015          39          1
+         5200          金融科技        0.007           3          5
+         V000          貿易百貨        0.007           5          3
+         5100           區塊鏈        0.005           1          5
+         5400          雲端運算        0.005           1          4
+         T000       交通運輸及航運        0.004           1          4
+         4100        太空衛星科技        0.003           9          3
+         M000            食品        0.003           1          4
+
+>>> Top 10 by negative-out (對下游負向領先):
+industry_code industry_name  neg_out_degree  out_degree
+         Q000            鋼鐵              35           0
+         X000            其他              14           0
+         I000          通信網路               6           0
+         K000           連接器               5           0
+         N000        石化及塑橡膠               4           1
+         2000            造紙               2           0
+         S000          建材營造               2           0
+         5300          人工智慧               1           0
+         L000         印刷電路板               1           0
+         6000           自動化               1           0
+
+圖檔: fig_phase18_t_heatmap.png
+圖檔: fig_phase18_centrality.png
+圖檔: fig_phase18_network.png
+
+====================================================================================================
+結論摘要
+====================================================================================================
+
+Top 5 hub (out-weighted degree):
+  R300 電子商務    : out_w=113.05, out_count=39, PageRank=0.0167, hub=0.303
+  D000 半導體     : out_w=76.04, out_count=26, PageRank=0.0213, hub=0.246
+  5700 體驗科技    : out_w=66.57, out_count=25, PageRank=0.0171, hub=0.220
+  B000 休閒娛樂    : out_w=23.32, out_count=10, PageRank=0.0185, hub=0.042
+  4100 太空衛星科技  : out_w=21.35, out_count=9, PageRank=0.0178, hub=0.063
+
+Phase 7 驗證:
+  D000 半導體 out-weighted rank: #2/40 ✓ 為 hub
+  Q000 鋼鐵 negative-out rank: #1 ✓ 為負向 hub
