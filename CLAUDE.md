@@ -41,7 +41,8 @@
     ├── phase14_cross_chain_combo.py # 6-leader 跨鏈整合 (negative, 集中於 D100+2330)
     ├── phase15_g000_p000_sources.py # G000/P000 源頭辨認 + 個股 macro 檢驗
     ├── phase16_walkforward.py      # 嚴格 walk-forward 驗證 (5y train / 1y test)
-    └── output/                     # 70+ CSV/PNG 結果檔
+    ├── phase17_p000_dual_factor.py # P000 雙因子嘗試 (null, 整體 P000 仍最強)
+    └── output/                     # 75+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -139,12 +140,18 @@ python scraper/scrape_industry_chain.py
   - 衰減 ~2pp / Δt~-0.9 在 reasonable 範圍, 不是 in-sample lookback artifact
   - (N*, K*) 跨年穩定性: 早期 (2012-17) 偏好 (20,1), 後期 (2018-24) 偏好 (?,20) longer holding, 2025+ 又回 (?,1)
   - 2018 (中美貿易戰) / 2022 (升息+科技調整) 為三 predictor 共同 OOS 失敗年, 為市場 regime risk
+- [x] **Phase 17: P000 雙因子 (P200+P600) + 0.5·1590 — null 結果, Phase 13 框架不可移植**
+  - ρ(P_lead, 1590)=0.514 與 ρ(D100, 2330)=0.460 相近, 1590 殘差變異 73.4% ≈ 2330 的 76.4% — 機構相同
+  - 但結果相反: P_lead+0.5·1590 best (N=3, K=20) net@50bp xind t=2.68 vs **整體 P000 t=4.47 (alpha 11.97%, Sharpe 1.37)**
+  - P000 鏈內 target 同樣失敗: 雙因子 t=3.21 vs 整體 P000 t=4.94
+  - **失敗原因**:
+    1. 訊號強度不對稱: P_lead t=3.77 < D100 t=4.20, 1590 t=2.19 < 2330 t=2.73 — 弱訊號組合雜訊累積大於訊號
+    2. 整體 P000 (131 檔) ⊃ P_lead (27 檔) corr 0.90 — P000 不像 D000 ≡ D100 (corr 0.97), 整體已含中下游 macro/diversification
+    3. best (N, K) = (3, 20) 偏離正常區間 — 短平滑+長持有是雜訊累積特徵
+  - **重要結論**: D100+2330 雙因子 winner status 特殊於 D000 鏈結構 (sub_code leader ≈ 整體鏈), 不可機械套用到其他鏈
+  - **P000 最佳實作仍是整體 P000 (N=20, K=1) net@50bp Sharpe 1.56**
 
 ### 待辦
-- [ ] **建構 P000 雙因子: (P200+P600) + 0.5·1590 亞德客**
-  - Phase 15 發現 1590 為 P000 鏈的 macro 個股 (類似 2330 之於 D100)
-  - 套 Phase 13 框架測試是否能讓 P000 chain timing 達到 D100+2330 等級的 alpha
-  - 對照: Phase 11a P000 整體 t=4.74, Phase 13 雙因子 D100+2330 t=5.72
 - [ ] **I500 印刷電路板反向訊號異常研究**
   - Phase 11b 發現 I000 鏈內 I500 作 predictor 為 mean t=-2.04 (6/11 negative sig)
   - 假設: PCB 庫存週期反向領先, 或代工 vs 終端對沖效應
