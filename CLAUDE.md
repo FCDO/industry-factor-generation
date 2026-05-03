@@ -18,7 +18,7 @@
 ├── industry_chain.csv              # 爬蟲產出，主要對照表
 ├── scraper/
 │   └── scrape_industry_chain.py    # TPEx 爬蟲
-└── research/                       # Phase 1~13 實證分析
+└── research/                       # Phase 1~16 實證分析
     ├── research_report.md          # 完整研究報告
     ├── phase1_build_returns.py     # 構建產業鏈組合日報酬
     ├── phase2_predictive_reg.py    # Menzly-Ozbas 預測迴歸
@@ -38,7 +38,10 @@
     ├── phase11_chain_extension.py  # 23 鏈 timing 掃描 + top-3 sub_code 深掘
     ├── phase12_d100_replace.py     # D100 替換 D000 重做 Phase 8 (null 結果)
     ├── phase13_dual_factor.py      # IC設計 + 台積電 雙因子組合 (核心 winner)
-    └── output/                     # 50+ CSV/PNG 結果檔
+    ├── phase14_cross_chain_combo.py # 6-leader 跨鏈整合 (negative, 集中於 D100+2330)
+    ├── phase15_g000_p000_sources.py # G000/P000 源頭辨認 + 個股 macro 檢驗
+    ├── phase16_walkforward.py      # 嚴格 walk-forward 驗證 (5y train / 1y test)
+    └── output/                     # 70+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -116,25 +119,41 @@ python scraper/scrape_industry_chain.py
   - 殘差化版 (D100+1.0·2330⊥) t=5.09 略遜 50/50, 因丟棄 2330 market-correlated alpha
   - @80bp 高成本: 0.7·D100+0.3·2330 (N=20, K=1) Sharpe 1.26 與純 D100 低周轉版打平
   - **驗證 Phase 10 結論**: 2330 確實有 D100 沒有的獨立 alpha, 線性組合是最簡也最佳整合
+- [x] **Phase 14: 跨鏈 leader 組合 — negative result, 訊號集中於 D100+2330**
+  - 整合 6 leader (D100/GA00/P200/P600/IA00/2330) × 7 整合方法 (EW raw/zscore/PCA/Orth/OLS-oracle)
+  - **OLS-oracle (look-ahead) alpha 14.89% / t=5.68 仍輸 Phase 13 baseline (15.26%/5.72)**
+  - 主因: leader 共線性過高 (D100 與 GA00/IA00 corr 0.84-0.88), 只有 2330 真正獨立 (~0.43)
+  - OLS oracle 係數: D100=0.087, 2330=0.045, 其他 4 個 sub_code 都 ≈0 (IA00 還是負的)
+  - **實務含意**: 台股可交易 spillover 訊號高度集中, D100+2330 已吸收絕大多數
+- [x] **Phase 15: G000 / P000 源頭辨認 (Phase 10 風格)**
+  - G000 GA00 ⊥ 整體 G000 殘差仍預測 xind t=2.31, joint reg 確認 leader 主導
+  - P000 P200+P600 ⊥ 整體 P000 殘差預測 P000 中下游 t=2.68, xind t=2.47, leader 主導
+  - **個股 macro 訊號**: G000 候選 (友達 2409 / 群創 3481) 全部失敗 (alone t<1, joint 不顯著)
+  - **P000 找到了「P000 的 2330」: 1590 亞德客-KY** → xind alone t=3.19, joint reg 雙顯著 (t1=2.36, t2=2.43)
+  - 上銀 2049 較弱 (alone t=2.15, joint 整體鏈主導)
+  - 啟示: 1590 為 P000 鏈的 macro 個股, 可套 Phase 13 雙因子框架構 (P200+P600) + 0.5·1590
+- [x] **Phase 16: 嚴格 walk-forward 驗證 (5y train → 1y test, step 1y)**
+  - 樣本: 2007-2026 (15 個 OOS 年), target = 7 跨產業下游 EW
+  - **D100+0.5·2330 WF OOS: α=9.78%, t=3.33, Sharpe 1.46** (vs IS-locked α=11.85%, t=4.25)
+  - D000 WF: α=7.06%, t=2.20; D100 WF: α=7.25%, t=2.23 — Phase 13 雙因子在 WF 仍領先
+  - 衰減 ~2pp / Δt~-0.9 在 reasonable 範圍, 不是 in-sample lookback artifact
+  - (N*, K*) 跨年穩定性: 早期 (2012-17) 偏好 (20,1), 後期 (2018-24) 偏好 (?,20) longer holding, 2025+ 又回 (?,1)
+  - 2018 (中美貿易戰) / 2022 (升息+科技調整) 為三 predictor 共同 OOS 失敗年, 為市場 regime risk
 
 ### 待辦
-- [ ] **跨鏈 leader 組合因子** (下一步)
-  - 把 D100、GA00、P600+P200、IA00 等多源頭整合為 pure-leader 因子
-  - 測試是否優於單鏈訊號, 並用 PCA / orthogonalization 處理共線性
-  - 對照 Phase 13 雙因子框架, 是否能進一步加入 2330 構成多源頭 + macro 個股組合
-- [ ] **Phase 14: 平面顯示器/電機機械源頭辨認 (Phase 10 風格)**
-  - Phase 11a 顯示 G000 t=4.96, P000 t=4.74 都超越半導體
-  - 對 G000 (GA00 vs 整體 G000) 與 P000 (P600+P200 vs 整體 P000) 做 joint reg, 確認真實源頭
-  - 預期類似 Phase 10 結論: 純 leader sub_code 主導, 整體鏈為 noise dilution
-  - 找出 G000 / P000 是否各自有「macro 個股」(類似 2330 之於 D100), 可套 Phase 13 雙因子框架
+- [ ] **建構 P000 雙因子: (P200+P600) + 0.5·1590 亞德客**
+  - Phase 15 發現 1590 為 P000 鏈的 macro 個股 (類似 2330 之於 D100)
+  - 套 Phase 13 框架測試是否能讓 P000 chain timing 達到 D100+2330 等級的 alpha
+  - 對照: Phase 11a P000 整體 t=4.74, Phase 13 雙因子 D100+2330 t=5.72
 - [ ] **I500 印刷電路板反向訊號異常研究**
   - Phase 11b 發現 I000 鏈內 I500 作 predictor 為 mean t=-2.04 (6/11 negative sig)
   - 假設: PCB 庫存週期反向領先, 或代工 vs 終端對沖效應
   - 驗證: 個股拆解 + 跨產業檢驗
 - [ ] 多產業歸屬規則：一家公司若跨多產業，主產業如何決定
   - 候選：(a) FinLab 主產業 join，(b) 取營收最大產業，(c) 全部保留做加權
-- [ ] 嚴格 walk-forward 驗證：rolling 訓練/測試, 確認 Phase 8/11 的最佳 (N, K) 不是 in-sample lookback
 - [ ] 個股層級因子化：把 IC 設計訊號傳導模型轉為 firm-level alpha factor (Cohen-Frazzini 風)
+  - 不要 long 整個產業 EW, 改 long 對訊號有最高 exposure 的個股 (依 rolling β)
+  - 預期: firm-level alpha factor 可整合進多因子模型
 - [ ] 鏈間網絡分析：以 link 矩陣計算 centrality / community detection, 系統化定義產業 hub
 
 ## 注意事項
