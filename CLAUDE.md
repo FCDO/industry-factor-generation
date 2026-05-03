@@ -18,7 +18,7 @@
 ├── industry_chain.csv              # 爬蟲產出，主要對照表
 ├── scraper/
 │   └── scrape_industry_chain.py    # TPEx 爬蟲
-└── research/                       # Phase 1~11 實證分析
+└── research/                       # Phase 1~13 實證分析
     ├── research_report.md          # 完整研究報告
     ├── phase1_build_returns.py     # 構建產業鏈組合日報酬
     ├── phase2_predictive_reg.py    # Menzly-Ozbas 預測迴歸
@@ -36,7 +36,9 @@
     ├── phase9_semi_internal.py     # 半導體鏈內部 (sub_code 級)
     ├── phase10_ic_vs_foundry.py    # IC設計 vs 晶圓代工 源頭辨認
     ├── phase11_chain_extension.py  # 23 鏈 timing 掃描 + top-3 sub_code 深掘
-    └── output/                     # 40+ CSV/PNG 結果檔
+    ├── phase12_d100_replace.py     # D100 替換 D000 重做 Phase 8 (null 結果)
+    ├── phase13_dual_factor.py      # IC設計 + 台積電 雙因子組合 (核心 winner)
+    └── output/                     # 50+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -102,23 +104,29 @@ python scraper/scrape_industry_chain.py
   - 唯一失敗: 5800 運動科技 (樣本太薄, t=-0.41); Q000 鋼鐵鏈內無效 (跨產業才是 leader)
   - 11b sub_code 純 leader: G000 → 其他零組件 GA00 (t=1.86, 7/12 sig); P000 → 沖壓零組件 P600 + 傳動元件 P200; I000 → 光通訊 IA00 + 網路IC + 記憶體 + 網路設備 (多源頭結構, 不像 D000 一枝獨秀)
   - 異常: I000 鏈內印刷電路板 I500 為**反向訊號** (作 predictor mean t=-2.04, 6/11 negative sig), 可能反映 PCB 庫存週期與終端對沖
+- [x] **Phase 12: D100 取代 D000 重做 Phase 8 跨產業策略 — null 結果**
+  - 假設: D100 純訊號源應提升 alpha; 實測: D100 ≈ D000 (corr=0.966)
+  - Best (N=20, K=1) @ 50bp: D100 alpha 12.56% / t=4.20 vs D000 alpha 12.17% / t=4.36 (Δ 僅 +0.39pp)
+  - **解釋**: D100 ⊂ D000 且半導體股同質性高, EW 平均後幾乎是同一 portfolio
+  - 次要發現: D100 在弱平滑+長持有 (N=3, K=20) 下 Δalpha 達 +4.05pp, 訊號穩定度較好但實用 winner 參數差距小
+- [x] **Phase 13: D100 + 2330 雙因子組合 — 核心 winner**
+  - 為何有效: ρ(D100, 2330) = **0.460** (vs D000 為 0.966), 2330 帶 76% idiosyncratic 訊息
+  - **0.5·D100+0.5·2330 (N=10, K=1) net@50bp: alpha 15.26%, t=5.72, Sharpe 1.65** (跨產業 7 下游)
+  - 鏈內 D000 中下游 target: alpha **18.25%, t=6.41, Sharpe 1.81** — 全研究最強訊號
+  - 殘差化版 (D100+1.0·2330⊥) t=5.09 略遜 50/50, 因丟棄 2330 market-correlated alpha
+  - @80bp 高成本: 0.7·D100+0.3·2330 (N=20, K=1) Sharpe 1.26 與純 D100 低周轉版打平
+  - **驗證 Phase 10 結論**: 2330 確實有 D100 沒有的獨立 alpha, 線性組合是最簡也最佳整合
 
 ### 待辦
-- [ ] **以 IC 設計 (D100) 替換 Phase 8 整體半導體訊號**
-  - 目前 Phase 8 用整體 D000 (346 家) EMA(20) → 7 跨產業下游, alpha 12.4%, t=4.20
-  - Phase 10 證明 D100 (89 家 IC 設計) 才是純訊號源, 預期替換後 alpha 提升
-  - 對照 Phase 9 鏈內結果: D100 → D000 中下游 alpha 已達 14.7%
-- [ ] **建構 IC 設計 + 台積電 雙因子組合**
-  - Phase 10 顯示 2330 有獨立於 IC 設計 portfolio 的 alpha (t≈2.6, 反映 macro AI)
-  - 預期雙因子線性組合 (e.g., 0.7×D100 + 0.3×TSMC) 比單一 IC 設計訊號更強
-  - 需測試最佳權重 + 是否要做殘差化避免共線性
-- [ ] **Phase 12: 平面顯示器/電機機械源頭辨認 (Phase 10 風格)**
+- [ ] **跨鏈 leader 組合因子** (下一步)
+  - 把 D100、GA00、P600+P200、IA00 等多源頭整合為 pure-leader 因子
+  - 測試是否優於單鏈訊號, 並用 PCA / orthogonalization 處理共線性
+  - 對照 Phase 13 雙因子框架, 是否能進一步加入 2330 構成多源頭 + macro 個股組合
+- [ ] **Phase 14: 平面顯示器/電機機械源頭辨認 (Phase 10 風格)**
   - Phase 11a 顯示 G000 t=4.96, P000 t=4.74 都超越半導體
   - 對 G000 (GA00 vs 整體 G000) 與 P000 (P600+P200 vs 整體 P000) 做 joint reg, 確認真實源頭
   - 預期類似 Phase 10 結論: 純 leader sub_code 主導, 整體鏈為 noise dilution
-- [ ] **跨鏈 leader 組合因子**
-  - 把 D100、GA00、P600+P200、IA00 等多源頭整合為 pure-leader 因子
-  - 測試是否優於單鏈訊號, 並用 PCA / orthogonalization 處理共線性
+  - 找出 G000 / P000 是否各自有「macro 個股」(類似 2330 之於 D100), 可套 Phase 13 雙因子框架
 - [ ] **I500 印刷電路板反向訊號異常研究**
   - Phase 11b 發現 I000 鏈內 I500 作 predictor 為 mean t=-2.04 (6/11 negative sig)
   - 假設: PCB 庫存週期反向領先, 或代工 vs 終端對沖效應
