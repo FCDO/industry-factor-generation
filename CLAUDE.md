@@ -47,7 +47,18 @@
     ├── phase20_firm_level_alpha.py # Cohen-Frazzini β-sorted long-only timed
     ├── phase21_cs_factor.py        # Cross-sectional factor 變體 (全部 negative)
     ├── phase22_g000_strategy.py    # G000 完整策略規劃 + walk-forward
-    └── output/                     # 90+ CSV/PNG 結果檔
+    ├── phase23_midstream_pickup.py # D400/D500 中游個股 in-sample β-loading (look-ahead)
+    ├── phase24_midstream_walkforward.py # WF threshold t>1.96 篩選 (失敗)
+    ├── phase25_topN_rank.py        # WF Top-N rank (改進但未擊敗 baseline)
+    ├── phase26_delay_ratio.py      # WF β_lag/β_now 延遲份額排序 (selection α 救援成功)
+    ├── phase27_revenue_filter.py   # ratio + YoY>0 過濾 rank→filter (失敗 -4pp)
+    ├── phase28_universe_prefilter.py # ratio + 3M-avg-YoY 預過濾 filter→rank (仍輸 no-filter)
+    ├── phase29_downstream_ratio.py # D000 下游 6 sub_code ratio rank (timed 三項全勝)
+    ├── phase30_market_cap.py       # ratio + 市值預過濾 (全失敗) + 純 MC 對照
+    ├── phase31_trading_value.py    # ratio + 3M 成交金額預過濾 (比 MC 更傷)
+    ├── phase32_pure_tv_rank.py     # 純成交金額 top-N (無 ratio, 全失敗)
+    ├── phase33_pure_mc_rank.py     # 純市值 top-N (比 TV 略好但仍失敗)
+    └── output/                     # 110+ CSV/PNG 結果檔
 ```
 
 ## industry_chain.csv 欄位
@@ -190,6 +201,90 @@ python scraper/scrape_industry_chain.py
   - **Walk-forward winner**: G_0.3GA+0.7D (30% GA00 + 70% D_macro), WF α=11.76%, t=3.68, Sharpe 1.55, 衰減僅 -0.42pp
   - 三因子 I_3factor IS 看似最強 (t=5.30) 但 OOS 衰減 -4.03pp (overfit Q000 無實質訊號)
   - **G000 實盤建議: G_0.3GA+0.7D (N=10, K=1)** 或更簡單的 D_macro alone (WF α=11.57%, t=3.61)
+- [x] **Phase 23: D400/D500 中游個股 in-sample β-loading 排序 (look-ahead bias 範例)**
+  - 動機: Phase 9 顯示 D400 設備、D500 化學品集合層面是純 receiver, 但 cross-sectional 異質性可能被 EW 平均掩蓋
+  - Universe: 60 檔 unique (D400 設備 44 + D500 化學品 16, FinLab 4 位數 stock_id)
+  - Per-stock lagged-β regression on full sample (4245d), 控 r_i_lag + market_lag + HAC SE
+  - **24/60 (40%) 全期 |t|>1.96, 22 檔 5y 仍穩定**
+  - **Top picks**: 6208 日揚 (t=4.65 最強), 3535 晶彩科 (β=0.21 最大), 5434 崇越/3010 華立/1785 光洋科 (D500)
+  - β_contemp 才是 market beta (t>10), β_lag/β_contemp 比率 (~24-36%) 才是真延遲份額
+  - **重要警告**: 全期跑 = look-ahead, 不可實盤; 為 Phase 24-26 的 baseline / upper bound
+- [x] **Phase 24: D400/D500 walk-forward β-screening (threshold t > 1.96, 5y rolling) — 失敗**
+  - 月底 rebalance, 過去 5y window 跑 lagged-β regression, t > 1.96 入選, EW within selected
+  - 169 個月 × 76 檔 (D400∪D500 unique) regression, no-peek 嚴格保證
+  - **Δα vs Full EW**: -0.15pp (always-on) / +1.12pp 但 Δt -0.56 (timed)
+  - 入選數量極不穩定 (median 10, min 1, max 25), 2018 僅 2 檔通過 → 集中風險
+  - α 上升被 vol 同步上升吃光, t 反降; 確認 Phase 23 in-sample bias ≈ 1-2pp α
+- [x] **Phase 25: D400/D500 walk-forward Top-N rank — 比 threshold 改進但仍輸 baseline**
+  - 改取 t-stat 排名前 N 檔 (避免「2018 僅 2 檔」極端集中), N ∈ {5, 10, 15, 20}
+  - vs Phase 24: Sharpe 1.27 → **1.54**, t 3.09 → **3.59** (Top-15 timed)
+  - **Top-15 timed**: α=13.78% (+1.03pp vs Full EW timed), Sharpe 1.54 ≈ baseline 1.59
+  - **Top-5 always-on**: α=8.74% (+3.27pp), 純 cross-sectional alpha 出現 (但 vol 大 Sh 反降)
+  - timed 軌道仍未擊敗 Full EW timed, selection α 與 timing α 重疊
+- [x] **Phase 26: D400/D500 walk-forward β_lag/β_now「延遲份額」排序 — selection α 救援成功**
+  - 動機: t-stat 沒區分「真延遲 vs 同步反應 + 大樣本」, 改算 β_lag/β_now ratio
+  - Joint regression: r_i = α + β_now·lead(t) + β_lag·lead(t-1) + γ·r_i_lag + δ·m_lag
+  - **ratio N=10 always-on**: α=**10.41%**, t=**2.58**, Sharpe **1.33** (vs Full EW α=5.48% / t=1.77 / Sh 1.18)
+  - **Δα = +4.94pp ✓✓** — 確認 cross-sectional 真實 alpha 存在於中游 sub-universe
+  - 比 b_lag rank (+3.10pp) 和 t_lag rank (+2.79pp) 更強, 證明「延遲份額」排除「同期反應+大樣本」雜音
+  - Timed 軌道三種排序持平 baseline (timing 已賺光時序 α, selection 邊際小)
+  - **發現新個股**: 1742 台蠟、4764 雙鍵 (D500 化學品) 在 ratio rank 進 top, t_lag rank 看不出
+  - **重要結論**: Phase 21 「CS 因子全 negative」結論在中游 sub-universe + ratio 排序下被 partially 推翻
+- [x] **Phase 27: D400/D500 ratio rank + 月營收 YoY > 0 過濾 (rank→filter) — 失敗**
+  - 假設: ratio 找技術延遲反應, YoY 過濾基本面已轉弱的個股
+  - 結果: filter 把 ratio 最強個股大量排除 (43% 跳過, 含 #1 6208 日揚 YoY -18%)
+  - **N=10 always-on Δα = -4.00pp** vs no filter (10.41% → 6.41%), ΔSh -0.273 ↓
+  - 由 ratio 弱的個股遞補, 訊號被稀釋, turnover 增加 4 倍 (1.88 → 6.92)
+  - 唯一 N=5 例外救援 (filter 強迫遞補等於分散集中風險)
+- [x] **Phase 28: D400/D500 ratio rank + 月營收 3M-avg YoY 預過濾 (filter→rank) — 仍輸 no-filter**
+  - 改 universe-level pre-filter (剔除 3M-avg YoY < threshold 個股), 然後 ratio rank top-N
+  - **Δα vs Phase 27 ≥0%**: +2.26pp (filter-then-rank 比 rank-then-filter 合理, 保留 ratio 最強個股)
+  - 但**全部 threshold 仍未擊敗無過濾基準** (≥-30% 微升 Sharpe +0.017, 其他都傷)
+  - 失敗原因: 半導體中游是強週期股, ratio 強訊號常出現在週期觸底 (YoY 為負時), 過濾把 buy opportunity 殺掉
+  - **6208 日揚 案例**: ratio #1 但 3M-avg YoY -9.58%, ≥-10% / ≥0% 門檻會把最強訊號剔除
+  - **Phase 23-28 最終結論**:
+    - 中游個股 selection 最佳實作 = **Phase 26 ratio N=10 always-on (no YoY filter)** — α=10.41%, Sharpe 1.33
+    - 月營收 YoY 在週期股難以整合, 唯一安全用法是「剔除 3M-avg < -30% 真正爛公司」(避免下市/陷阱)
+    - timed 軌道 selection 與 timing 重疊, Full EW timed 仍是 Sharpe 王 (1.59)
+- [x] **Phase 29: D000 下游 6 sub_code (D600/D700/D800/D900/DA00/DB00) ratio rank — timed 軌道首度三項全勝**
+  - Universe: 126 檔 unique (D600 設備 43 + D700 基板 7 + D800 導線架 7 + D900 IC封測 27 + DA00 IC模組 13 + DB00 IC通路 29)
+  - 同 Phase 26 設計 (ratio = β_lag/β_now, 5y rolling, top-N), N ∈ {5, 10, 15, 20}
+  - **best ratio N=20 timed**: α=**13.36%**, t=**4.41**, Sharpe **1.63** (vs Full EW timed 11.81/3.84/1.62)
+  - **Δα +1.55pp ✓ Δt +0.57 ✓ ΔSh +0.014 ✓ — Phase 23-29 系列首個 timed 三項全勝設定**
+  - **best N 從 10 (中游) → 20 (下游)**: universe 翻倍 (60→126), 維持 ~16% 集中度
+  - **Sub_code over-representation 揭示真正 receiver**:
+    - **DB00 IC 通路 1.40×** (29 檔, top-10 出現 615 次) ✓ over
+    - **D700 基板 2.13×** (7 檔但 over-rep 最高) ✓✓
+    - D600 設備 0.67× ❌ under-rep (43 檔最大 sub 反而 ratio 偏低 — β_now 太大被分母稀釋)
+  - 2026-04 top 15: 蔚華科/美達科技/博大/威健/三顧/志旭/增你強/豐藝/意德士/佳穎/易華電/全科/創見/長科/敦吉
+  - **重要**: top picks 含 8067 志旭 (市值 NaN, 流動性陷阱) → Phase 30/31 揭露實盤 trade-off
+- [x] **Phase 30: 市值預過濾 + ratio rank — 全面失敗**
+  - A. ratio + MC top X% filter (X = 30/50/70%): **全部 -2 ~ -5pp Δα ↓**
+  - B. Pure MC top-N (對照組, 無 ratio) timed Sh 0.78-0.92 (大幅輸 ratio 1.63)
+  - 失敗原因: ratio top 個股集中中小型股 (20-200 億區間), MC top X% 把強訊號 strip 掉
+  - **大型股 β_now 大** (機構覆蓋率高, 同步性強) → ratio 自然偏低 → MC top 與 ratio top **結構性 mismatch**
+- [x] **Phase 31: 3M 成交金額預過濾 + ratio rank — 比 MC 還傷**
+  - A. ratio + TV top X% filter: top70/50/30% Δα = -3.86 / -5.51 / **-6.57pp** (timed N=20)
+  - B. Pure TV top-N timed Sh 0.69-0.82 (比 Pure MC 還差)
+  - **核心啟示**: 延遲反應與低流動性正相關 — Hou (2007) 經典 information slowness
+  - 8067 志旭 (ratio top 6) 日均成交金額 0.001 億 = 真流動性陷阱
+  - **paper α vs executable α trade-off**: 13.36% (no filter) → 9.50% (TV top70%, 排除流動性最差 30%)
+- [x] **Phase 32: 純成交金額 top-N (無 ratio) — 完全失敗**
+  - N ∈ {5, 10, 15, 20, 25, 30} 全部 timed Sharpe < 0.86, α < 6.45%
+  - 全部 t_α < 1.5 (統計上無顯著 alpha)
+  - **2308 台達電 169/169 月 (100%) 入選 top 10**, 本質是「半導體下游大型股 ETF」
+  - 確認大型股 alpha 早被 priced in
+- [x] **Phase 33: 純市值 top-N (無 ratio) — 失敗但比 TV 略好**
+  - N ∈ {5, 10, 15, 20, 25, 30}, eval 從 2013-05 開始 (MC 資料起點)
+  - **N=10 always-on Δα +2.26pp** (Phase 30-33 純 size 排序首次正向 Δα), 但 Sharpe 仍 -0.11 ↓
+  - timed best N=30: α=8.83%, t=2.31, Sharpe 1.14 (仍輸 baseline 1.63 / ratio winner 1.63)
+  - **MC > TV** (所有 N): timed Sh +0.10~+0.29 — size 比 liquidity 穩定, 但都不是 alpha 來源
+  - 99% 入選: 台達電/和碩/群聯/大聯大/聯強/力成 — 穩定大型權值股組合
+  - **Phase 29-33 總結**:
+    - alpha 來源 = **中小型股的 information slowness**, 不是大型股的 market efficiency
+    - 任何品質/流動性類過濾 (YoY/MC/TV) 都會 strip ratio top picks → -2~-7pp α
+    - 排序方法 timed Sh 排序: **ratio (1.63) > Full EW (1.63) > MC top-N (1.14) > TV top-N (0.86)**
+    - 實盤折衷: ratio + TV top70% (剔除底部 30% 流動性) → α=9.50%, Sh=1.19, 仍勝 Full EW always-on
 
 ### 待辦
 - [ ] **I500 印刷電路板反向訊號異常研究**
@@ -197,10 +292,24 @@ python scraper/scrape_industry_chain.py
   - Phase 19 OLS-oracle 發現 N000 石化係數 -0.107 也是反向訊號, 同類型異常
   - 假設: 庫存週期反向領先, 或代工 vs 終端對沖效應
   - 驗證: 個股拆解 + 跨產業檢驗 + 整合多反向訊號為 contrarian factor
-- [ ] **產業內中性 β CS 因子 (Phase 21 救援)**
-  - Phase 21 全 universe β-sort LS 全 negative, 可能受 size/sector 干擾
-  - 試: 產業內排序 β, 產業等權聚合, 看是否仍 negative
-  - 對照: BAB (Frazzini-Pedersen long low-β / short high-β) 是否可在台股直接複製
+- [ ] **產業內中性 β CS 因子 (Phase 21 救援) — Phase 26/29 已驗證**
+  - Phase 26 ratio N=10 always-on 在 D400+D500 中游證實 selection α 存在 (+4.94pp)
+  - Phase 29 ratio N=20 timed 在 D000 下游 timed 軌道首度三項全勝 (Sh 1.63, +0.014)
+  - 待擴展: 套到其他鏈中游 sub_code (P200/P600 電機機械、GA00 平面顯示器、IA00 通信網路)
+  - 待擴展: 對 Phase 8 跨產業 7 下游 universe 套用 ratio rank (更大舞台)
+  - 對照: BAB (Frazzini-Pedersen) 台股可行性
+- [ ] **基本面/品質整合替代方案 (Phase 27-33 全失敗後)**
+  - 已試失敗: YoY (Phase 27/28)、市值 (Phase 30/33)、成交金額 (Phase 31/32) — 全 strip 強訊號
+  - 核心矛盾: alpha 集中中小型 information slowness, 任何「大盤股偏好」過濾都反向
+  - 試: YoY 動能轉折 (由下轉上 = 加分) 取代絕對水準
+  - 試: 毛利率/ROE/經營現金流等更穩定的基本面變數
+  - 試: YoY 整合進 timing (組合平均 YoY < threshold 時降低部位) 而非 selection
+- [ ] **paper α vs executable α 流動性 trade-off 研究**
+  - Phase 31 揭露: ratio rank 純訊號 α=13.36% 含 8067 志旭等流動性陷阱不可實盤
+  - 折衷 ratio + TV top70% α=9.50% (失 3.86pp 換取流動性)
+  - 待: Amihud 流動性指標 (return / dollar volume) 而非 raw TV
+  - 待: 動態 N (流動性大時擴大 N, 反之集中) 取代固定 N
+  - 待: 計算實盤可行 α 上界 (排除日均成交 < 1 億 / 個股部位 < 5% 該股 ADV)
 - [ ] **其他鏈套用 Phase 22 風策略規劃**
   - P000 已試過 (Phase 17 fail), G000 已試過 (Phase 22 success)
   - 可對 Phase 11a 中 t>4 鏈一一套用: I000/F000/L000/J000/H000/K000/S000
